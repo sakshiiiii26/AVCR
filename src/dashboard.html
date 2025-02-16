@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gas Sensor Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f4f4f9, #e0e0e8);
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            text-align: center;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-bar.safe {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .status-bar.warning {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+        }
+
+        .status-bar.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        /* Circular Progress Bar */
+        .progress-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: conic-gradient(
+                #27ae60 0% 33%,
+                #f1c40f 33% 66%,
+                #e74c3c 66% 100%
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .progress-circle:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-circle::before {
+            content: '';
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: white;
+        }
+
+        .progress-circle .value {
+            position: relative;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .progress-circle .label {
+            position: absolute;
+            bottom: -20px;
+            font-size: 14px;
+            color: #34495e;
+        }
+
+        /* Sensor Cards */
+        .card {
+            text-align: center;
+        }
+
+        .card h2 {
+            margin: 10px 0;
+            color: #34495e;
+        }
+
+        .card .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .card .status.safe {
+            background: #27ae60;
+            color: white;
+        }
+
+        .card .status.warning {
+            background: #f1c40f;
+            color: white;
+        }
+
+        .card .status.danger {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gas Sensor Dashboard</h1>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="overall-status">
+        Loading...
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard">
+        <!-- Temperature -->
+        <div class="card">
+            <div class="progress-circle" id="temp-circle">
+                <div class="value"><span id="temperature">0</span>°C</div>
+            </div>
+            <h2>Temperature</h2>
+            <p class="status" id="temp-status">-</p>
+        </div>
+
+        <!-- Humidity -->
+        <div class="card">
+            <div class="progress-circle" id="humidity-circle">
+                <div class="value"><span id="humidity">0</span>%</div>
+                <div class="label">Humidity</div>
+            </div>
+            <p class="status" id="humidity-status">-</p>
+        </div>
+
+        <!-- MQ2 (Gas) -->
+        <div class="card">
+            <div class="progress-circle" id="mq2-circle">
+                <div class="value"><span id="mq2">0</span> ppm</div>
+                <div class="label">MQ2 (Gas)</div>
+            </div>
+            <h2>MQ2 (Gas)</h2>
+            <p class="status" id="mq2-status">-</p>
+        </div>
+
+        <!-- MQ4 (CH4) -->
+        <div class="card">
+            <div class="progress-circle" id="mq4-circle">
+                <div class="value"><span id="mq4">0</span> ppm</div>
+                <div class="label">MQ4 (CH4)</div>
+            </div>
+            <h2>MQ4 (CH4)</h2>
+            <p class="status" id="mq4-status">-</p>
+        </div>
+
+        <!-- MQ6 (Propane) -->
+        <div class="card">
+            <div class="progress-circle" id="mq6-circle">
+                <div class="value"><span id="mq6">0</span> ppm</div>
+                <div class="label">MQ6 (Propane)</div>
+            </div>
+            <h2>MQ6 (Propane)</h2>
+            <p class="status" id="mq6-status">-</p>
+        </div>
+
+        <!-- MQ9 (CO) -->
+        <div class="card">
+            <div class="progress-circle" id="mq9-circle">
+                <div class="value"><span id="mq9">0</span> ppm</div>
+                <div class="label">MQ9 (CO)</div>
+            </div>
+            <h2>MQ9 (CO)</h2>
+            <p class="status" id="mq9-status">-</p>
+        </div>
+
+        <!-- MQ131 (Ozone) -->
+        <div class="card">
+            <div class="progress-circle" id="mq131-circle">
+                <div class="value"><span id="mq131">0</span> ppm</div>
+                <div class="label">MQ131 (Ozone)</div>
+            </div>
+            <h2>MQ131 (Ozone)</h2>
+            <p class="status" id="mq131-status">-</p>
+        </div>
+
+        <!-- Distance (Lidar) -->
+        <div class="card">
+            <div class="progress-circle" id="distance-circle">
+                <div class="value"><span id="distance">0</span> cm</div>
+                <div class="label">Distance</div>
+            </div>
+            <h2>Distance</h2>
+            <p class="status" id="distance-status">-</p>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('http://localhost:5000/api/sensor-data');
+                const data = await response.json();
+                const latest = data[data.length - 1];
+
+                // Update sensor data
+                document.getElementById('temperature').textContent = latest.temperature || "0";
+                document.getElementById('humidity').textContent = latest.humidity || "0";
+                document.getElementById('mq2').textContent = latest.mq2 || "0";
+                document.getElementById('mq4').textContent = latest.mq4 || "0";
+                document.getElementById('mq6').textContent = latest.mq6 || "0";
+                document.getElementById('mq9').textContent = latest.mq9 || "0";
+                document.getElementById('mq131').textContent = latest.mq131 || "0";
+                document.getElementById('distance').textContent = latest.distance || "0";
+
+                // Update progress circles
+                updateProgressCircle('temp-circle', latest.temperature, [0, 50]);
+                updateProgressCircle('humidity-circle', latest.humidity, [0, 100]);
+                updateProgressCircle('mq2-circle', latest.mq2, [0, 300]);
+                updateProgressCircle('mq4-circle', latest.mq4, [0, 150]);
+                updateProgressCircle('mq6-circle', latest.mq6, [0, 300]);
+                updateProgressCircle('mq9-circle', latest.mq9, [0, 150]);
+                updateProgressCircle('mq131-circle', latest.mq131, [0, 150]);
+                updateProgressCircle('distance-circle', latest.distance, [0, 200]);
+
+                // Update statuses
+                updateStatus('temp-status', latest.temperature, [0, 30], [30, 40]);
+                updateStatus('humidity-status', latest.humidity, [0, 50], [50, 80]);
+                updateStatus('mq2-status', latest.mq2, [0, 100], [100, 300]);
+                updateStatus('mq4-status', latest.mq4, [0, 50], [50, 150]);
+                updateStatus('mq6-status', latest.mq6, [0, 100], [100, 300]);
+                updateStatus('mq9-status', latest.mq9, [0, 50], [50, 150]);
+                updateStatus('mq131-status', latest.mq131, [0, 50], [50, 150]);
+                updateStatus('distance-status', latest.distance, [0, 100], [100, 200]);
+
+                // Update overall status
+                updateOverallStatus(latest);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function updateProgressCircle(circleId, value, range) {
+            const circle = document.getElementById(circleId);
+            const percentage = (value / range[1]) * 100;
+            circle.style.background = `conic-gradient(
+                #27ae60 0% ${percentage}%,
+                #f1c40f ${percentage}% 66%,
+                #e74c3c 66% 100%
+            )`;
+        }
+
+        function updateStatus(elementId, value, safeRange, warningRange) {
+            const statusElement = document.getElementById(elementId);
+            if (value >= safeRange[0] && value <= safeRange[1]) {
+                statusElement.textContent = "Safe";
+                statusElement.className = "status safe";
+            } else if (value > warningRange[0] && value <= warningRange[1]) {
+                statusElement.textContent = "Warning";
+                statusElement.className = "status warning";
+            } else {
+                statusElement.textContent = "Danger";
+                statusElement.className = "status danger";
+            }
+        }
+
+        function updateOverallStatus(data) {
+            const overallStatus = document.getElementById('overall-status');
+            const dangerLevel = data.danger_level || 0;
+
+            if (dangerLevel === 0) {
+                overallStatus.textContent = "Safe Zone";
+                overallStatus.className = "status-bar safe";
+            } else if (dangerLevel === 1) {
+                overallStatus.textContent = "Warning Zone";
+                overallStatus.className = "status-bar warning";
+            } else {
+                overallStatus.textContent = "Danger Zone";
+                overallStatus.className = "status-bar danger";
+            }
+        }
+
+        // Fetch data every 5 seconds
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>
