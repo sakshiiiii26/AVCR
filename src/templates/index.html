@@ -147,26 +147,53 @@
             border-radius: 5px;
             display: inline-block;
             margin-top: 10px;
+            color: white;
         }
 
         .card .status.safe {
             background: #27ae60;
-            color: white;
         }
 
         .card .status.warning {
             background: #f1c40f;
-            color: white;
         }
 
         .card .status.danger {
             background: #e74c3c;
+        }
+
+        /* Alert notification */
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
             color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: none;
+        }
+
+        .alert.danger {
+            background: #e74c3c;
+            display: block;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <h1>Gas Sensor Dashboard</h1>
+
+    <!-- Alert Notification -->
+    <div class="alert" id="alert-notification"></div>
 
     <!-- Overall Status Bar -->
     <div class="status-bar" id="overall-status">
@@ -263,23 +290,25 @@
     <script>
         // List of gases we're monitoring
         const gases = ["o2", "co2", "co", "ch4", "propane", "smoke"];
-
-        // Mock data for testing (remove in production)
-        const mockPrediction = {
-            o2_status: "Safe",
-            co2_status: "Warning",
-            co_status: "Danger",
-            ch4_status: "Safe",
-            propane_status: "Warning",
-            smoke_status: "Safe",
-            danger_level: "Warning"
+        
+        // Thresholds for each gas (example values - adjust based on your model)
+        const thresholds = {
+            o2: { safe: [19.5, 23.5], warning: [18, 19.5, 23.5, 25], danger: [0, 18, 25, 100] },
+            co2: { safe: [0, 1000], warning: [1000, 2000], danger: [2000, 5000] },
+            co: { safe: [0, 35], warning: [35, 100], danger: [100, 1000] },
+            ch4: { safe: [0, 1000], warning: [1000, 5000], danger: [5000, 10000] },
+            propane: { safe: [0, 1000], warning: [1000, 5000], danger: [5000, 10000] },
+            smoke: { safe: [0, 100], warning: [100, 300], danger: [300, 1000] }
         };
+
+        // Last danger state for alert management
+        let lastDangerState = null;
 
         async function fetchData() {
             try {
                 console.log("Fetching sensor data...");
                 
-                // 1. First fetch the raw sensor data
+                // 1. First fetch the raw sensor data from Flask API
                 const sensorResponse = await fetch('http://localhost:5000/api/sensor-data');
                 if (!sensorResponse.ok) {
                     throw new Error('Sensor data fetch failed');
@@ -287,7 +316,10 @@
                 const sensorData = await sensorResponse.json();
                 console.log("Sensor data received:", sensorData);
                 
-                const latestReading = sensorData[sensorData.length - 1];
+                // Get the latest reading (assuming API returns array)
+                const latestReading = Array.isArray(sensorData) ? 
+                    sensorData[sensorData.length - 1] : 
+                    sensorData;
                 
                 // 2. Update the UI with raw values
                 gases.forEach(gas => {
@@ -301,9 +333,10 @@
             } catch (error) {
                 console.error('Error fetching data:', error);
                 
-                // For testing purposes, use mock data when real API fails
-                console.warn("Using mock data due to API error");
-                updateUI(mockPrediction);
+                // For testing purposes, generate mock data when real API fails
+                console.warn("Generating mock data due to API error");
+                const mockData = generateMockData();
+                updateUI(mockData);
                 
                 // Update UI to show error state
                 document.getElementById('overall-status').textContent = "Using Sample Data";
@@ -324,8 +357,8 @@
                         ch4: sensorData.ch4,
                         propane: sensorData.propane,
                         smoke: sensorData.smoke,
-                        temperature: sensorData.temperature,
-                        humidity: sensorData.humidity
+                        temperature: sensorData.temperature || 25,  // Default values if not provided
+                        humidity: sensorData.humidity || 50
                     })
                 });
 
@@ -342,14 +375,74 @@
             } catch (error) {
                 console.error('Error fetching prediction:', error);
                 
-                // For testing purposes, use mock data when real API fails
-                console.warn("Using mock prediction due to API error");
-                updateUI(mockPrediction);
+                // If prediction fails, use simple threshold-based classification
+                console.warn("Using threshold-based classification due to API error");
+                const thresholdPrediction = classifyUsingThresholds(sensorData);
+                updateUI(thresholdPrediction);
                 
                 // Update UI to show prediction error
-                document.getElementById('overall-status').textContent = "Using Sample Data";
+                document.getElementById('overall-status').textContent = "Using Threshold Analysis";
                 document.getElementById('overall-status').className = "status-bar warning";
             }
+        }
+
+        function classifyUsingThresholds(sensorData) {
+            const prediction = { danger_level: "Safe" };
+            
+            gases.forEach(gas => {
+                const value = sensorData[gas] || 0;
+                const gasThresholds = thresholds[gas];
+                
+                if (gas === 'o2') {
+                    // O2 has different thresholds (too low or too high is dangerous)
+                    if (value < gasThresholds.safe[0] || value > gasThresholds.safe[1]) {
+                        if ((value >= gasThresholds.warning[0] && value < gasThresholds.warning[1]) || 
+                            (value > gasThresholds.warning[2] && value <= gasThresholds.warning[3])) {
+                            prediction[`${gas}_status`] = "Warning";
+                            if (prediction.danger_level === "Safe") {
+                                prediction.danger_level = "Warning";
+                            }
+                        } else {
+                            prediction[`${gas}_status`] = "Danger";
+                            prediction.danger_level = "Danger";
+                        }
+                    } else {
+                        prediction[`${gas}_status`] = "Safe";
+                    }
+                } else {
+                    // Other gases - higher is worse
+                    if (value < gasThresholds.safe[1]) {
+                        prediction[`${gas}_status`] = "Safe";
+                    } else if (value < gasThresholds.warning[1]) {
+                        prediction[`${gas}_status`] = "Warning";
+                        if (prediction.danger_level === "Safe") {
+                            prediction.danger_level = "Warning";
+                        }
+                    } else {
+                        prediction[`${gas}_status`] = "Danger";
+                        prediction.danger_level = "Danger";
+                    }
+                }
+            });
+            
+            return prediction;
+        }
+
+        function generateMockData() {
+            // Generate random values within different ranges to simulate different states
+            const mockData = {
+                o2: 20 + (Math.random() * 6 - 3),  // 17-23%
+                co2: Math.random() * 3000,         // 0-3000ppm
+                co: Math.random() * 150,           // 0-150ppm
+                ch4: Math.random() * 6000,         // 0-6000ppm
+                propane: Math.random() * 6000,     // 0-6000ppm
+                smoke: Math.random() * 400,        // 0-400ppm
+                temperature: 20 + (Math.random() * 15), // 20-35°C
+                humidity: 30 + (Math.random() * 50)    // 30-80%
+            };
+            
+            // Classify the mock data
+            return classifyUsingThresholds(mockData);
         }
 
         function updateUI(prediction) {
@@ -360,13 +453,34 @@
                 // Try different possible status fields
                 const status = prediction[`${gas}_status`] || 
                               prediction[`${gas}_state`] || 
-                              prediction.overall_status || 
+                              classifyValue(gas, document.getElementById(`${gas}-value`).textContent) || 
                               "Unknown";
                 updateGasStatus(gas, status);
             });
 
             // Update overall status
             updateOverallStatus(prediction);
+            
+            // Show alert if in danger state
+            manageAlerts(prediction.danger_level || prediction.overall_status);
+        }
+
+        function classifyValue(gas, valueStr) {
+            const value = parseFloat(valueStr);
+            if (isNaN(value)) return "Unknown";
+            
+            const gasThresholds = thresholds[gas];
+            
+            if (gas === 'o2') {
+                if (value >= gasThresholds.safe[0] && value <= gasThresholds.safe[1]) return "Safe";
+                if ((value >= gasThresholds.warning[0] && value < gasThresholds.warning[1]) || 
+                    (value > gasThresholds.warning[2] && value <= gasThresholds.warning[3])) return "Warning";
+                return "Danger";
+            } else {
+                if (value <= gasThresholds.safe[1]) return "Safe";
+                if (value <= gasThresholds.warning[1]) return "Warning";
+                return "Danger";
+            }
         }
 
         function updateGasStatus(gas, status) {
@@ -374,7 +488,7 @@
             const gauge = document.getElementById(`${gas}-gauge`);
             const statusElement = document.getElementById(`${gas}-status`);
             
-            // Convert to lowercase for class names
+            // Normalize status to lowercase
             const statusClass = status.toLowerCase();
             
             // Update gauge color
@@ -386,21 +500,48 @@
         }
 
         function updateOverallStatus(prediction) {
-            const dangerLevel = prediction.danger_level || 
-                              prediction.overall_status || 
-                              "Unknown";
+            const dangerLevel = (prediction.danger_level || 
+                               prediction.overall_status || 
+                               "Unknown").toLowerCase();
             console.log("Updating overall status to:", dangerLevel);
             
             const overallStatus = document.getElementById('overall-status');
-            overallStatus.textContent = `Overall Status: ${dangerLevel}`;
-            overallStatus.className = `status-bar ${dangerLevel.toLowerCase()}`;
-       
+            
+            // Create appropriate status text
+            let statusText = "Overall Status: ";
+            if (dangerLevel === "safe") statusText += "Safe";
+            else if (dangerLevel === "warning") statusText += "Warning - Caution Needed";
+            else if (dangerLevel === "danger") statusText += "Danger - Immediate Action Required";
+            else statusText += "Unknown";
+            
+            overallStatus.textContent = statusText;
+            overallStatus.className = `status-bar ${dangerLevel}`;
         }
-    
+        
+        function manageAlerts(dangerLevel) {
+            const alertElement = document.getElementById('alert-notification');
+            
+            if (dangerLevel.toLowerCase() === "danger") {
+                alertElement.textContent = "DANGER! Evacuate area immediately!";
+                alertElement.className = "alert danger";
+                lastDangerState = "danger";
+            } 
+            else if (dangerLevel.toLowerCase() === "warning" && lastDangerState !== "danger") {
+                alertElement.textContent = "WARNING: Potential hazard detected";
+                alertElement.className = "alert warning";
+                lastDangerState = "warning";
+            }
+            else if (dangerLevel.toLowerCase() === "safe") {
+                alertElement.className = "alert";
+                lastDangerState = "safe";
+            }
+        }
+
+        // Initial data fetch
+        fetchData();
+        
         // Fetch data every 5 seconds
         setInterval(fetchData, 5000);
-    
     </script>
-    
 </body>
 </html>
