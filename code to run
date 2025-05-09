@@ -1,0 +1,7 @@
+terminal1 
+source venv/Scripts/activate
+python src/app.py
+
+terminal2
+source venv/Scripts/activate
+python simulate_data.py

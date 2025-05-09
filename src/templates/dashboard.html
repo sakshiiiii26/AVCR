@@ -1,0 +1,95 @@
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Card, CardContent } from "@/components/ui/card";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
+
+const GAS_TYPES = ["CH4", "CO", "O3"];
+
+const getColorFromDangerLevel = (level) => {
+  if (level === "Safe") return "bg-green-500";
+  if (level === "Warning") return "bg-yellow-400";
+  return "bg-red-500";
+};
+
+export default function Dashboard() {
+  const [data, setData] = useState({});
+  const [anomaly, setAnomaly] = useState(0);
+  const [dangerLevel, setDangerLevel] = useState("Safe");
+  const [predictions, setPredictions] = useState([]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      axios.get("http://localhost:5000/api/sensor-data").then((res) => {
+        setData(res.data.raw_data);
+        setAnomaly(res.data.anomaly);
+        setDangerLevel(res.data.danger_level);
+        setPredictions(res.data.predicted_gas_levels);
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      {GAS_TYPES.map((gas, idx) => (
+        <Card key={idx} className="p-4">
+          <CardContent>
+            <div className="flex flex-col items-center">
+              <div
+                className={`rounded-full w-24 h-24 flex items-center justify-center text-white text-xl font-bold ${getColorFromDangerLevel(
+                  dangerLevel
+                )}`}
+              >
+                {data[gas.toLowerCase()] || 0} ppm
+              </div>
+              <div className="mt-2 font-semibold">{gas}</div>
+              <div className="w-full mt-4">
+                <Line
+                  data={{
+                    labels: ["Now", "+1min", "+2min", "+3min"],
+                    datasets: [
+                      {
+                        label: `Predicted ${gas}`,
+                        data: predictions[idx] || [0, 0, 0, 0],
+                        fill: false,
+                        borderColor: "#4f46e5",
+                        tension: 0.3,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: { beginAtZero: true },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      <div className="col-span-1 md:col-span-3 mt-6 text-center">
+        <p className="text-xl font-semibold">
+          Danger Level: <span className={getColorFromDangerLevel(dangerLevel) + " text-white px-2 py-1 rounded"}>{dangerLevel}</span>
+        </p>
+        {anomaly === -1 && (
+          <p className="text-red-600 mt-2 font-bold animate-pulse">⚠️ Anomaly Detected!</p>
+        )}
+      </div>
+    </div>
+  );
+}

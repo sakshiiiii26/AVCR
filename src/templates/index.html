@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gas Sensor Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #f4f4f9, #e0e0e8);
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            text-align: center;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+        }
+
+        .status-bar.safe {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+
+        .status-bar.warning {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+        }
+
+        .status-bar.danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Solid Color Gauge */
+        .gauge-container {
+            width: 100%;
+            max-width: 250px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .gauge {
+            width: 100%;
+            height: 0;
+            padding-bottom: 100%;
+            position: relative;
+            border-radius: 50%;
+            background: #f5f5f5;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background 0.5s ease;
+        }
+
+        .gauge.safe {
+            background: #27ae60;
+        }
+
+        .gauge.warning {
+            background: #f1c40f;
+        }
+
+        .gauge.danger {
+            background: #e74c3c;
+        }
+
+        .gauge-cover {
+            width: 70%;
+            height: 70%;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1) inset;
+        }
+
+        .gauge-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .gauge-label {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .gauge-unit {
+            font-size: 16px;
+            color: #7f8c8d;
+        }
+
+        /* Sensor Cards */
+        .card {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .card h2 {
+            margin: 10px 0;
+            color: #34495e;
+        }
+
+        .card .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .card .status.safe {
+            background: #27ae60;
+            color: white;
+        }
+
+        .card .status.warning {
+            background: #f1c40f;
+            color: white;
+        }
+
+        .card .status.danger {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gas Sensor Dashboard</h1>
+
+    <!-- Overall Status Bar -->
+    <div class="status-bar" id="overall-status">
+        Loading...
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard">
+        <!-- O2 -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="o2-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="o2-value">0</span></div>
+                        <div class="gauge-unit">% O₂</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Oxygen (O₂)</h2>
+            <p class="status" id="o2-status">-</p>
+        </div>
+
+        <!-- CO2 -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="co2-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="co2-value">0</span></div>
+                        <div class="gauge-unit">ppm CO₂</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Carbon Dioxide (CO₂)</h2>
+            <p class="status" id="co2-status">-</p>
+        </div>
+
+        <!-- CO -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="co-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="co-value">0</span></div>
+                        <div class="gauge-unit">ppm CO</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Carbon Monoxide (CO)</h2>
+            <p class="status" id="co-status">-</p>
+        </div>
+
+        <!-- CH4 -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="ch4-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="ch4-value">0</span></div>
+                        <div class="gauge-unit">ppm CH₄</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Methane (CH₄)</h2>
+            <p class="status" id="ch4-status">-</p>
+        </div>
+
+        <!-- Propane -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="propane-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="propane-value">0</span></div>
+                        <div class="gauge-unit">ppm C₃H₈</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Propane (C₃H₈)</h2>
+            <p class="status" id="propane-status">-</p>
+        </div>
+
+        <!-- Smoke -->
+        <div class="card">
+            <div class="gauge-container">
+                <div class="gauge" id="smoke-gauge">
+                    <div class="gauge-cover">
+                        <div class="gauge-value"><span id="smoke-value">0</span></div>
+                        <div class="gauge-unit">ppm Smoke</div>
+                    </div>
+                </div>
+            </div>
+            <h2>Smoke</h2>
+            <p class="status" id="smoke-status">-</p>
+        </div>
+    </div>
+
+    <script>
+        // List of gases we're monitoring
+        const gases = ["o2", "co2", "co", "ch4", "propane", "smoke"];
+
+        // Mock data for testing (remove in production)
+        const mockPrediction = {
+            o2_status: "Safe",
+            co2_status: "Warning",
+            co_status: "Danger",
+            ch4_status: "Safe",
+            propane_status: "Warning",
+            smoke_status: "Safe",
+            danger_level: "Warning"
+        };
+
+        async function fetchData() {
+            try {
+                console.log("Fetching sensor data...");
+                
+                // 1. First fetch the raw sensor data
+                const sensorResponse = await fetch('http://localhost:5000/api/sensor-data');
+                if (!sensorResponse.ok) {
+                    throw new Error('Sensor data fetch failed');
+                }
+                const sensorData = await sensorResponse.json();
+                console.log("Sensor data received:", sensorData);
+                
+                const latestReading = sensorData[sensorData.length - 1];
+                
+                // 2. Update the UI with raw values
+                gases.forEach(gas => {
+                    const value = latestReading[gas] || 0;
+                    document.getElementById(`${gas}-value`).textContent = value.toFixed(1);
+                });
+
+                // 3. Get classification from ML model
+                await fetchPrediction(latestReading);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                
+                // For testing purposes, use mock data when real API fails
+                console.warn("Using mock data due to API error");
+                updateUI(mockPrediction);
+                
+                // Update UI to show error state
+                document.getElementById('overall-status').textContent = "Using Sample Data";
+                document.getElementById('overall-status').className = "status-bar warning";
+            }
+        }
+
+        async function fetchPrediction(sensorData) {
+            try {
+                console.log("Fetching prediction...");
+                const response = await fetch('http://localhost:5000/api/predict', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        o2: sensorData.o2,
+                        co2: sensorData.co2,
+                        co: sensorData.co,
+                        ch4: sensorData.ch4,
+                        propane: sensorData.propane,
+                        smoke: sensorData.smoke,
+                        temperature: sensorData.temperature,
+                        humidity: sensorData.humidity
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Prediction fetch failed');
+                }
+
+                const prediction = await response.json();
+                console.log("Prediction received:", prediction);
+                
+                // 4. Update UI based on model's predictions
+                updateUI(prediction);
+
+            } catch (error) {
+                console.error('Error fetching prediction:', error);
+                
+                // For testing purposes, use mock data when real API fails
+                console.warn("Using mock prediction due to API error");
+                updateUI(mockPrediction);
+                
+                // Update UI to show prediction error
+                document.getElementById('overall-status').textContent = "Using Sample Data";
+                document.getElementById('overall-status').className = "status-bar warning";
+            }
+        }
+
+        function updateUI(prediction) {
+            console.log("Updating UI with:", prediction);
+            
+            // Update each gas's status
+            gases.forEach(gas => {
+                // Try different possible status fields
+                const status = prediction[`${gas}_status`] || 
+                              prediction[`${gas}_state`] || 
+                              prediction.overall_status || 
+                              "Unknown";
+                updateGasStatus(gas, status);
+            });
+
+            // Update overall status
+            updateOverallStatus(prediction);
+        }
+
+        function updateGasStatus(gas, status) {
+            console.log(`Updating ${gas} status to:`, status);
+            const gauge = document.getElementById(`${gas}-gauge`);
+            const statusElement = document.getElementById(`${gas}-status`);
+            
+            // Convert to lowercase for class names
+            const statusClass = status.toLowerCase();
+            
+            // Update gauge color
+            gauge.className = `gauge ${statusClass}`;
+            
+            // Update status text
+            statusElement.className = `status ${statusClass}`;
+            statusElement.textContent = status;
+        }
+
+        function updateOverallStatus(prediction) {
+            const dangerLevel = prediction.danger_level || 
+                              prediction.overall_status || 
+                              "Unknown";
+            console.log("Updating overall status to:", dangerLevel);
+            
+            const overallStatus = document.getElementById('overall-status');
+            overallStatus.textContent = `Overall Status: ${dangerLevel}`;
+            overallStatus.className = `status-bar ${dangerLevel.toLowerCase()}`;
+       
+        }
+    
+        // Fetch data every 5 seconds
+        setInterval(fetchData, 5000);
+    
+    </script>
+    
+</body>
+</html>
