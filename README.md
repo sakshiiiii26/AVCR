@@ -55,9 +55,6 @@ pip install -r requirements.txt
 Run Flask backend:
 python app.py
 
-Access local server:
-http://localhost:5000
-
 Project Structure
 
 AVCR/
